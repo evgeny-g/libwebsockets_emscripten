@@ -86,7 +86,7 @@ lws_client_socket_service(struct lws *wsi, struct lws_pollfd *pollfd,
 	char ebuf[128];
 #endif
 	const char *cce = NULL;
-#if defined(LWS_ROLE_H1) || defined(LWS_ROLE_H2)
+#if (defined(LWS_ROLE_H1) || defined(LWS_ROLE_H2)) && !defined(__EMSCRIPTEN__)
 	ssize_t len = 0;
 	unsigned char c;
 #endif
@@ -370,6 +370,14 @@ start_ws_handshake:
 		/* fallthru */
 
 	case LRS_H1C_ISSUE_HANDSHAKE2:
+#if defined(__EMSCRIPTEN__)
+		//avoid send HTTP headers from browser
+		lws_latency_pre(context, wsi);
+
+		w = _lws_client_wsi_master(wsi);
+		lws_callback_on_writable(w);
+		goto client_http_body_sent;
+#endif
 		p = lws_generate_client_handshake(wsi, p);
 		if (p == NULL) {
 			if (wsi->role_ops == &role_ops_raw_skt ||
@@ -451,6 +459,7 @@ client_http_body_sent:
 		break;
 
 	case LRS_WAITING_SERVER_REPLY:
+#if !defined(__EMSCRIPTEN__)
 		/*
 		 * handle server hanging up on us...
 		 * but if there is POLLIN waiting, handle that first
@@ -516,7 +525,7 @@ client_http_body_sent:
 			break;
 
 #endif
-
+#endif
 		/*
 		 * otherwise deal with the handshake.  If there's any
 		 * packet traffic already arrived we'll trigger poll() again
@@ -670,6 +679,7 @@ strrchr(const char *s, int c)
 int
 lws_client_interpret_server_handshake(struct lws *wsi)
 {
+
 	int n, port = 0, ssl = 0;
 	int close_reason = LWS_CLOSE_STATUS_PROTOCOL_ERR;
 	const char *prot, *ads = NULL, *path, *cce = NULL;
@@ -679,6 +689,9 @@ lws_client_interpret_server_handshake(struct lws *wsi)
 	char new_path[300];
 
 	lws_client_stash_destroy(wsi);
+#if defined(__EMSCRIPTEN__)
+	return lws_client_ws_upgrade(wsi, &cce);
+#endif
 
 	ah = wsi->http.ah;
 	if (!wsi->do_ws) {

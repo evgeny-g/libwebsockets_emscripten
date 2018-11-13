@@ -25,14 +25,15 @@
  * parsers.c: lws_ws_rx_sm() needs to be roughly kept in
  *   sync with changes here, esp related to ext draining
  */
-
 int lws_ws_client_rx_sm(struct lws *wsi, unsigned char c)
 {
 	int callback_action = LWS_CALLBACK_CLIENT_RECEIVE;
 	int handled, m;
-	unsigned short close_code;
 	struct lws_tokens ebuf;
+#if !defined(__EMSCRIPTEN__)
+	unsigned short close_code;
 	unsigned char *pp;
+#endif
 #if !defined(LWS_WITHOUT_EXTENSIONS)
 	int rx_draining_ext = 0, n;
 #endif
@@ -54,6 +55,9 @@ int lws_ws_client_rx_sm(struct lws *wsi, unsigned char c)
 
 	if (wsi->socket_is_permanently_unusable)
 		return -1;
+#if defined(__EMSCRIPTEN__)
+	wsi->lws_rx_parse_state = LWS_RXPS_WS_FRAME_PAYLOAD;
+#endif
 
 	switch (wsi->lws_rx_parse_state) {
 	case LWS_RXPS_NEW:
@@ -109,6 +113,7 @@ int lws_ws_client_rx_sm(struct lws *wsi, unsigned char c)
 			}
 			wsi->ws->rsv = (c & 0x70);
 			/* revisit if an extension wants them... */
+#if !defined(__EMSCRIPTEN__)
 			if (
 #if !defined(LWS_WITHOUT_EXTENSIONS)
 				!wsi->ws->count_act_ext &&
@@ -117,10 +122,12 @@ int lws_ws_client_rx_sm(struct lws *wsi, unsigned char c)
 				lwsl_info("illegal rsv bits set\n");
 				return -1;
 			}
+#endif
 			wsi->ws->final = !!((c >> 7) & 1);
 			lwsl_ext("%s:    This RX frame Final %d\n", __func__,
 				 wsi->ws->final);
 
+#if !defined(__EMSCRIPTEN__)
 			if (wsi->ws->owed_a_fin &&
 			    (wsi->ws->opcode == LWSWSOPC_TEXT_FRAME ||
 			     wsi->ws->opcode == LWSWSOPC_BINARY_FRAME)) {
@@ -142,10 +149,13 @@ int lws_ws_client_rx_sm(struct lws *wsi, unsigned char c)
 			switch (wsi->ws->opcode) {
 			case LWSWSOPC_TEXT_FRAME:
 			case LWSWSOPC_BINARY_FRAME:
+#endif
 				wsi->ws->frame_is_binary = wsi->ws->opcode ==
 						 LWSWSOPC_BINARY_FRAME;
+#if !defined(__EMSCRIPTEN__)
 				break;
 			}
+#endif
 			wsi->lws_rx_parse_state = LWS_RXPS_04_FRAME_HDR_LEN;
 			break;
 
@@ -352,6 +362,7 @@ spill:
 		 * layer?  If so service it and hide it from the user callback
 		 */
 
+#if !defined(__EMSCRIPTEN__)
 		switch (wsi->ws->opcode) {
 		case LWSWSOPC_CLOSE:
 			pp = (unsigned char *)&wsi->ws->rx_ubuf[LWS_PRE];
@@ -476,6 +487,7 @@ ping_drop:
 
 			return -1;
 		}
+#endif
 
 		/*
 		 * No it's real payload, pass it up to the user callback.
@@ -484,7 +496,6 @@ ping_drop:
 		 */
 		if (handled)
 			goto already_done;
-
 		ebuf.token = &wsi->ws->rx_ubuf[LWS_PRE];
 		ebuf.len = wsi->ws->rx_ubuf_head;
 

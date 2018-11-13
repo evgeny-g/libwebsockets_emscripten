@@ -20,11 +20,11 @@
  */
 
 #include <core/private.h>
-
 /*
  * In-place str to lower case
  */
 
+#if !defined(__EMSCRIPTEN__)
 static void
 strtolower(char *s)
 {
@@ -38,6 +38,7 @@ strtolower(char *s)
 		s++;
 	}
 }
+#endif
 
 int
 lws_create_client_ws_object(const struct lws_client_connect_info *i,
@@ -79,7 +80,7 @@ lws_ws_handshake_client(struct lws *wsi, unsigned char **buf, size_t len)
 		 * we were accepting input but now we stopped doing so
 		 */
 		if (lws_is_flowcontrolled(wsi)) {
-			//lwsl_notice("%s: caching %ld\n", __func__, (long)len);
+			lwsl_notice("%s: caching %ld\n", __func__, (long)len);
 			lws_rxflow_cache(wsi, *buf, 0, (int)len);
 			*buf += len;
 			return 0;
@@ -88,7 +89,7 @@ lws_ws_handshake_client(struct lws *wsi, unsigned char **buf, size_t len)
 		if (wsi->ws->rx_draining_ext) {
 			int m;
 
-			//lwsl_notice("%s: draining ext\n", __func__);
+			lwsl_notice("%s: draining ext\n", __func__);
 			if (lwsi_role_client(wsi))
 				m = lws_ws_client_rx_sm(wsi, 0);
 			else
@@ -116,6 +117,7 @@ lws_ws_handshake_client(struct lws *wsi, unsigned char **buf, size_t len)
 char *
 lws_generate_client_ws_handshake(struct lws *wsi, char *p, const char *conn1)
 {
+#if !defined(__EMSCRIPTEN__)
 	char buf[128], hash[20], key_b64[40];
 	int n;
 #if !defined(LWS_WITHOUT_EXTENSIONS)
@@ -197,19 +199,22 @@ lws_generate_client_ws_handshake(struct lws *wsi, char *p, const char *conn1)
 	lws_b64_encode_string(hash, 20,
 		  wsi->http.ah->initial_handshake_hash_base64,
 		  sizeof(wsi->http.ah->initial_handshake_hash_base64));
-
+#endif
 	return p;
 }
 
 int
 lws_client_ws_upgrade(struct lws *wsi, const char **cce)
 {
-	struct lws_context *context = wsi->context;
+#if !defined(__EMSCRIPTEN__)
 	struct lws_tokenize ts;
-	int n, len, okay = 0;
 	lws_tokenize_elem e;
+	int len, okay = 0;
 	char *p, buf[64];
 	const char *pc;
+#endif
+	struct lws_context *context = wsi->context;
+	int n = 0;
 #if !defined(LWS_WITHOUT_EXTENSIONS)
 	struct lws_context_per_thread *pt = &context->pt[(int)wsi->tsi];
 	char *sb = (char *)&pt->serv_buf[0];
@@ -236,6 +241,7 @@ lws_client_ws_upgrade(struct lws *wsi, const char **cce)
 		goto bail3;
 	}
 
+#if !defined(__EMSCRIPTEN__)
 	if (wsi->http.ah->http_response != 101) {
 		lwsl_warn(
 		       "lws_client_handshake: got bad HTTP response '%d'\n",
@@ -243,7 +249,6 @@ lws_client_ws_upgrade(struct lws *wsi, const char **cce)
 		*cce = "HS: ws upgrade response not 101";
 		goto bail3;
 	}
-
 	if (lws_hdr_total_length(wsi, WSI_TOKEN_ACCEPT) == 0) {
 		lwsl_info("no ACCEPT\n");
 		*cce = "HS: ACCEPT missing";
@@ -350,11 +355,30 @@ bad_conn_format:
 		}
 		n++;
 	}
+#else
+	n = 0;
+	/* keep client connection pre-bound protocol */
+	if (!lwsi_role_client(wsi))
+		wsi->protocol = NULL;
+
+	while (wsi->vhost->protocols[n].callback) {
+		if (!wsi->protocol &&
+		    strcmp("binary", wsi->vhost->protocols[n].name) == 0) {
+			wsi->protocol = &wsi->vhost->protocols[n];
+			break;
+		}
+		n++;
+	}
+#endif
 
 	if (!wsi->vhost->protocols[n].callback) { /* no match */
 		/* if server, that's already fatal */
 		if (!lwsi_role_client(wsi)) {
+#if !defined(__EMSCRIPTEN__)
 			lwsl_info("%s: fail protocol %s\n", __func__, p);
+#else
+			lwsl_info("%s: fail protocol\n", __func__);
+#endif
 			*cce = "HS: Cannot match protocol";
 			goto bail2;
 		}
@@ -383,7 +407,9 @@ bad_conn_format:
 
 	lwsl_debug("Selected protocol %s\n", wsi->protocol->name);
 
+#if !defined(__EMSCRIPTEN__)
 check_extensions:
+#endif
 	/*
 	 * stitch protocol choice into the vh protocol linked list
 	 * We always insert ourselves at the start of the list
@@ -396,7 +422,6 @@ check_extensions:
 
 #if !defined(LWS_WITHOUT_EXTENSIONS)
 	/* instantiate the accepted extensions */
-
 	if (!lws_hdr_total_length(wsi, WSI_TOKEN_EXTENSIONS)) {
 		lwsl_ext("no client extensions allowed by server\n");
 		goto check_accept;
@@ -544,6 +569,7 @@ check_accept:
 	 * Confirm his accept token is the one we precomputed
 	 */
 
+#if !defined(__EMSCRIPTEN__)
 	p = lws_hdr_simple_ptr(wsi, WSI_TOKEN_ACCEPT);
 	if (strcmp(p, wsi->http.ah->initial_handshake_hash_base64)) {
 		lwsl_warn("lws_client_int_s_hs: accept '%s' wrong vs '%s'\n", p,
@@ -551,6 +577,7 @@ check_accept:
 		*cce = "HS: Accept hash wrong";
 		goto bail2;
 	}
+#endif
 
 	/* allocate the per-connection user memory (if any) */
 	if (lws_ensure_user_space(wsi)) {

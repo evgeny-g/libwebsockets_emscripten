@@ -123,6 +123,9 @@ typedef unsigned long long lws_intptr_t;
 #define LWS_INVALID_FILE NULL
 #endif
 #endif
+#if defined(__EMSCRIPTEN__)
+	#define getdtablesize() (30)
+#endif
 
 #if defined(__GNUC__)
 

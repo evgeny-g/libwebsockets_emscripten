@@ -147,10 +147,11 @@ lws_plat_set_socket_options(struct lws_vhost *vhost, int fd, int unix_skt)
       !defined(__FreeBSD__) && !defined(__FreeBSD_kernel__) &&        \
       !defined(__NetBSD__) && \
       !defined(__OpenBSD__) && \
-      !defined(__HAIKU__)
+      !defined(__HAIKU__)  && \
+      !defined(__EMSCRIPTEN__)
 	if (!unix_skt && setsockopt(fd, SOL_TCP, TCP_NODELAY, (const void *)&optval, optlen) < 0)
 		return 1;
-#else
+#elif !defined(__EMSCRIPTEN__)
 	tcp_proto = getprotobyname("TCP");
 	if (!unix_skt && setsockopt(fd, tcp_proto->p_proto, TCP_NODELAY, &optval, optlen) < 0)
 		return 1;

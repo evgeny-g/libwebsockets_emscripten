@@ -87,7 +87,12 @@ _lws_plat_service_tsi(struct lws_context *context, int timeout_ms, int tsi)
 
 	vpt->inside_poll = 1;
 	lws_memory_barrier();
+#if !defined(__EMSCRIPTEN__)
 	n = poll(pt->fds, pt->fds_count, timeout_ms);
+#else
+	n = poll(pt->fds, pt->fds_count, 0);
+#endif
+
 	vpt->inside_poll = 0;
 	lws_memory_barrier();
 

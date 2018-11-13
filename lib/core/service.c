@@ -49,14 +49,13 @@ lws_callback_as_writeable(struct lws *wsi)
 
 	return m;
 }
-
 LWS_VISIBLE int
 lws_handle_POLLOUT_event(struct lws *wsi, struct lws_pollfd *pollfd)
 {
 	volatile struct lws *vwsi = (volatile struct lws *)wsi;
 	int n;
 
-	//lwsl_notice("%s: %p\n", __func__, wsi);
+	lwsl_notice("%s: %p\n", __func__, wsi);
 
 	vwsi->leave_pollout_active = 0;
 	vwsi->handling_pollout = 1;
@@ -67,6 +66,7 @@ lws_handle_POLLOUT_event(struct lws *wsi, struct lws_pollfd *pollfd)
 	 */
 	wsi->could_have_pending = 0; /* clear back-to-back write detection */
 
+#if !defined(__EMSCRIPTEN__)
 	/*
 	 * user callback is lowest priority to get these notifications
 	 * actually, since other pending things cannot be disordered
@@ -77,7 +77,6 @@ lws_handle_POLLOUT_event(struct lws *wsi, struct lws_pollfd *pollfd)
 	 *
 	 *	       These are post- any compression transform
 	 */
-
 	if (lws_has_buffered_out(wsi)) {
 		//lwsl_notice("%s: completing partial\n", __func__);
 		if (lws_issue_raw(wsi, NULL, 0) < 0) {
@@ -184,7 +183,7 @@ lws_handle_POLLOUT_event(struct lws *wsi, struct lws_pollfd *pollfd)
 	     )
 		goto bail_ok;
 
-
+#endif
 #ifdef LWS_WITH_CGI
 user_service_go_again:
 #endif
@@ -585,11 +584,12 @@ lws_service_periodic_checks(struct lws_context *context,
 #endif
 
 	if (!context->protocol_init_done)
+	{
 		if (lws_protocol_init(context)) {
 			lwsl_err("%s: lws_protocol_init failed\n", __func__);
 			return -1;
 		}
-
+	}
 	time(&now);
 
 	/*
@@ -934,11 +934,15 @@ lws_service_fd_tsi(struct lws_context *context, struct lws_pollfd *pollfd,
 	struct lws *wsi;
 
 	if (!context || context->being_destroyed1)
+	{
 		return -1;
+	}
 
 	/* the socket we came to service timed out, nothing to do */
 	if (lws_service_periodic_checks(context, pollfd, tsi) || !pollfd)
+	{
 		return -2;
+	}
 
 	/* no, here to service a socket descriptor */
 	wsi = wsi_from_fd(context, pollfd->fd);

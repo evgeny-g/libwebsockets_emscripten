@@ -31,7 +31,7 @@ int lws_issue_raw(struct lws *wsi, unsigned char *buf, size_t len)
 	size_t real_len = len;
 	unsigned int n, m;
 
-	// lwsl_notice("%s: len %d\n", __func__, (int)len);
+	 lwsl_notice("%s: len %d bufp=%p\n", __func__, (int)len, buf);
 
 	/*
 	 * Detect if we got called twice without going through the
@@ -227,7 +227,11 @@ LWS_VISIBLE int lws_write(struct lws *wsi, unsigned char *buf, size_t len,
 		wsi->vhost->conn_stats.tx += len;
 
 	assert(wsi->role_ops);
+
+#ifndef __EMSCRIPTEN__
+	//TODO doesn't work yet
 	if (!wsi->role_ops->write_role_protocol)
+#endif
 		return lws_issue_raw(wsi, buf, len);
 
 	return wsi->role_ops->write_role_protocol(wsi, buf, len, &wp);
@@ -288,8 +292,12 @@ lws_ssl_capable_write_no_ssl(struct lws *wsi, unsigned char *buf, int len)
 				   len, 0, &wsi->udp->sa, wsi->udp->salen);
 #endif
 	} else
+#if defined(__EMSCRIPTEN__)
+		n = send(wsi->desc.sockfd, (char *)buf, len, MSG_NOSIGNAL|MSG_DONTWAIT);
+#else
 		n = send(wsi->desc.sockfd, (char *)buf, len, MSG_NOSIGNAL);
-//	lwsl_info("%s: sent len %d result %d", __func__, len, n);
+#endif
+	lwsl_info("%s: sent len %d result %d", __func__, len, n);
 	if (n >= 0)
 		return n;
 
