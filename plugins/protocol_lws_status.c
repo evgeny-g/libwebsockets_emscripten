@@ -30,6 +30,7 @@
 #include <io.h>
 #include <gettimeofday.h>
 #endif
+#include <stdio.h>
 
 
 typedef enum {

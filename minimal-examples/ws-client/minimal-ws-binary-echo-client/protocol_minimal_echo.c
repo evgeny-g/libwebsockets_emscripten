@@ -15,6 +15,7 @@
 #endif
 
 #include <string.h>
+#include <stdio.h>
 
 /*
  * We will produce a large ws message either from this text repeated many times,
@@ -75,7 +76,6 @@ static uint64_t rng(uint64_t *r)
 
         return *r;
 }
-
 static int
 connect_client(struct vhd_binary_emscripten *vhd)
 {
@@ -84,10 +84,8 @@ connect_client(struct vhd_binary_emscripten *vhd)
 	memset(&i, 0, sizeof(i));
 
 	i.context = vhd->context;
-	i.port = 7681;
-//	i.port = 80;
-	i.address = "localhost";
-//	i.address = "174.129.224.73";
+	i.port = PORT;
+	i.address = "127.0.0.1";
 	i.path = "/";
 	i.host = i.address;
 	i.origin = i.address;

@@ -10,6 +10,7 @@
 #include <libwebsockets.h>
 #include <getopt.h>
 #include <fcntl.h>
+#include <stdio.h>
 
 static struct option options[] = {
 	{ "help",	no_argument,		NULL, 'h' },

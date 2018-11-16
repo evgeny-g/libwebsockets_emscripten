@@ -1,29 +1,54 @@
 wasm without ssl
 
-	compile shared openssl for emscripten:
-		https://blog.rplasil.name/2015/09/compiling-openssl-with-emscripten.html
-		emmake bash
-		./Configure shared -no-asm no-ssl3 no-comp no-hw no-threads no-dso no-ec no-psk --openssldir=built linux-generic32
-		make
-
 	emmake bash
 
-	export OPENSSL_ROOT_DIR=/<openssl_dir>/openssl
 	mkdir build-wasm
  
 	cd build-wasm
  
-	cmake ../ -DLWS_HAVE_X509_get_key_usage=OFF -DLWS_HAVE_TLS_CLIENT_METHOD=OFF -DLWS_HAVE_TLSV1_2_CLIENT_METHOD=OFF -DCMAKE_BUILD_TYPE=DEBUG -DLWS_WITH_NO_LOGS=ON -DLWS_WITH_MINIMAL_EXAMPLES=ON -DLWS_ROLE_WS=ON
+	cmake ../ -DCMAKE_BUILD_TYPE=DEBUG -DLWS_WITH_NO_LOGS=ON -DLWS_WITH_MINIMAL_EXAMPLES=ON -DLWS_ROLE_WS=ON -DLWS_WITH_SSL=OFF
+
 	make
 
 	mv bin/minimal-ws-binary-echo-client bin/minimal-ws-binary-echo-client.bc
 	
-	copy libcrypto.so to build-wasm/bin
-
- 	emcc bin/minimal-ws-binary-echo-client.bc bin/libcrypto.so -o client.html -s WASM=1 -s ERROR_ON_UNDEFINED_SYMBOLS=0
+ 	emcc bin/minimal-ws-binary-echo-client.bc -o client.html -s WASM=1 -s ERROR_ON_UNDEFINED_SYMBOLS=0
 
 	python -m SimpleHTTPServer
 
+
+	Server compilation:
+	mkdir build
+
+	cd build
+
+	cmake ../ -DCMAKE_BUILD_TYPE=DEBUG -DLWS_WITH_NO_LOGS=ON -DLWS_WITH_MINIMAL_EXAMPLES=ON -DLWS_ROLE_WS=ON
+
+	make
+	
+	./bin/minimal-ws-binary-echo-server
+
+compile with SSL
+	change 
+		var WEBSOCKET_URL = 'ws://';
+	to
+		var WEBSOCKET_URL = 'wss://';
+	into <your emscripten path>/src/settings.js
+
+	Client build procedure the same as without SSL, just rebuild it
+
+	Server compilation:
+	mkdir build
+
+	cd build
+
+	cmake ../ -DCMAKE_BUILD_TYPE=DEBUG -DLWS_WITH_NO_LOGS=ON -DLWS_WITH_MINIMAL_EXAMPLES=ON -DLWS_ROLE_WS=ON 
+
+	make
+
+	copy localhost-100y.key and localhost-100y.cert to build folder
+
+	./bin/minimal-ws-binary-echo-server
 
 	Known bugs:
 

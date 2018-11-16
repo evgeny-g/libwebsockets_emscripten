@@ -14,10 +14,10 @@
 #include <string.h>
 #include <signal.h>
 
+#define PORT (7681)
 #define LWS_PLUGIN_STATIC
 #include "protocol_ws_minimal_binary.c"
 
-//#define USE_SSL
 static struct lws_protocols protocols[] = {
 	{ "http", lws_callback_http_dummy, 0, 0 },
 	LWS_PLUGIN_PROTOCOL_BINARY_EMSCRIPTEN,
@@ -103,18 +103,18 @@ int main(int argc, const char **argv)
 //	if ((p = lws_cmdline_option(argc, argv, "-d")))
 //		logs = atoi(p);
 
-	lws_set_log_level(4095, NULL);
-	//lws_set_log_level(LLL_NOTICE | LLL_USER, NULL);
+	lws_set_log_level(LLL_NOTICE | LLL_USER, NULL);
 	lwsl_user("LWS minimal ws server + permessage-deflate | visit http://localhost:7681\n");
 	lwsl_user("   %s [-n (no exts)] [-c (compressible)] [-b (blob)]\n", argv[0]);
 
 	memset(&info, 0, sizeof info); /* otherwise uninitialized garbage */
-	info.port = 7681;
+	info.port = PORT;
 	info.mounts = &mount;
 	info.protocols = protocols;
 	info.pvo = &pvo;
-#if defined(USE_SSL)
+#if defined(LWS_WITH_TLS)
 	info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
+	info.options |= LWS_SERVER_OPTION_REDIRECT_HTTP_TO_HTTPS;
 	info.ssl_cert_filepath = "localhost-100y.cert";
 	info.ssl_private_key_filepath = "localhost-100y.key";
 #endif
