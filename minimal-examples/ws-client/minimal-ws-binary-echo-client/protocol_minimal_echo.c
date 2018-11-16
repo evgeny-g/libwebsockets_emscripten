@@ -85,7 +85,7 @@ connect_client(struct vhd_binary_emscripten *vhd)
 
 	i.context = vhd->context;
 	i.port = PORT;
-	i.address = "127.0.0.1";
+	i.address = "localhost";
 	i.path = "/";
 	i.host = i.address;
 	i.origin = i.address;
@@ -93,6 +93,10 @@ connect_client(struct vhd_binary_emscripten *vhd)
 	i.vhost = vhd->vhost;
 	i.protocol = "binary";
 	i.pwsi = &vhd->client_wsi;
+#if defined(LWS_WITH_TLS)
+	i.ssl_connection = LCCSCF_USE_SSL;
+	i.ssl_connection |= LCCSCF_ALLOW_SELFSIGNED;
+#endif
 
 	return !lws_client_connect_via_info(&i);
 }

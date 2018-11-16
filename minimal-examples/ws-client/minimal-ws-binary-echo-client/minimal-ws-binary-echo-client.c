@@ -107,6 +107,10 @@ int main(int argc, const char **argv)
 		info.extensions = extensions;
 	info.pt_serv_buf_size = 32 * 1024;
 
+#if defined(LWS_WITH_TLS)
+	info.options |= LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
+#endif
+
 //	if (lws_cmdline_option(argc, argv, "-c"))
 		options |= 1;
 
